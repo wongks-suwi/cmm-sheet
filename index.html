@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CMM – ตัวอย่างสื่อการสอน (เดโม)</title>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f172a;--card:#1e293b;--tx:#f8fafc;--mut:#94a3b8;--x:#ef4444;--y:#22c55e;--z:#3b82f6;--ac:#facc15}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:'Sarabun','Noto Sans Thai',sans-serif;font-size:20px;line-height:1.6}
+header{padding:10px 16px;background:#020617;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+header b{color:var(--ac)}
+.bar{height:8px;background:#334155}.bar i{display:block;height:100%;width:0;background:var(--ac);transition:width .3s}
+main{max-width:980px;margin:0 auto;padding:16px}
+.slide{display:none}.slide.on{display:block}
+h2{font-size:1.6em;margin:.2em 0}
+.card{background:var(--card);border-radius:16px;padding:16px;margin:12px 0}
+svg{width:100%;height:auto;background:#0b1220;border-radius:12px}
+button,select{font:inherit;font-size:.9em;padding:10px 16px;border-radius:10px;border:0;background:#334155;color:var(--tx);cursor:pointer;min-height:44px}
+button.p{background:var(--ac);color:#000;font-weight:700}
+button.on{outline:3px solid var(--ac)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+.tag{background:#7c2d12;color:#fed7aa;border-radius:6px;padding:0 8px;font-size:.8em}
+.narr p{margin:.3em 0;padding:4px 8px;border-radius:8px}
+.narr p.hl{background:#854d0e;color:#fff}
+#warn{display:none;background:#7f1d1d;padding:10px;border-radius:10px}
+.nav{display:flex;justify-content:space-between;gap:8px;margin-top:12px}
+</style>
+</head>
+<body>
+<header><div><b>CMM</b> · ตัวอย่างหน้าตา (เดโม) <span class="tag">[ตรวจสอบ] ข้อความเป็น placeholder</span></div><div id="pg"></div></header>
+<div class="bar"><i id="prog"></i></div>
+<main>
+<div id="warn">⚠️ เครื่องนี้ไม่พบเสียงภาษาไทย (th-TH) เสียงบรรยายอาจไม่ทำงาน ลองเปิดด้วย Chrome/Edge/Safari หรือติดตั้งเสียงไทยในระบบ</div>
+<div id="slides"></div>
+<div class="card">
+  <b>🔊 เสียงบรรยาย</b>
+  <div class="row">
+    <button class="p" id="bPlay">▶ เล่น</button><button id="bStop">⏹ หยุด</button><button id="bRe">🔁 เล่นซ้ำ</button>
+    <label>ความเร็ว <select id="rate"><option value="0.7">ช้า</option><option value="0.9" selected>ปกติ</option><option value="1.1">เร็ว</option><option value="1.3">เร็วมาก</option></select></label>
+    <label>เสียง <select id="voice"></select></label>
+  </div>
+  <div class="narr" id="narr"></div>
+</div>
+<div class="nav"><button id="prev">◀ ก่อนหน้า</button><button class="p" id="next">ถัดไป ▶</button></div>
+</main>
+<script>
+// ====== เนื้อหาทั้งหมด (แก้ข้อความที่นี่ที่เดียว) ======
+// หมายเหตุ: ข้อความเป็น placeholder ยังไม่ใช่เนื้อหาจากชีทจริง
+const CONTENT = {
+  slides: [
+    { id:"axes", title:"แกน X – Y – Z",
+      text:"CMM วัดตำแหน่งของจุดบนชิ้นงานเป็นพิกัด 3 แกน [ตรวจสอบ: ข้อความจากชีท]",
+      narration:[
+        "สวัสดีครับ มาดูกันว่าเครื่อง CMM รู้ตำแหน่งของจุดได้อย่างไร",
+        "เครื่องจะบอกตำแหน่งเป็นสามแกน คือ X, Y และ Z",
+        "กดปุ่มด้านบนภาพ เพื่อดูทีละแกนได้เลยครับ"
+      ],
+      axes:{ X:"แกน X (สีแดง) – ทิศทางตามชีท [ตรวจสอบ]", Y:"แกน Y (สีเขียว) – ทิศทางตามชีท [ตรวจสอบ]", Z:"แกน Z (สีน้ำเงิน) – ทิศทางตามชีท [ตรวจสอบ]" } },
+    { id:"probe", title:"โพรบแตะจุดบนชิ้นงาน",
+      text:"โพรบเคลื่อนไปแตะผิวชิ้นงานทีละจุด เครื่องบันทึกพิกัดทุกจุดที่แตะ [ตรวจสอบ: จำนวนจุดตามชีท]",
+      narration:[
+        "ต่อไปดูการทำงานของหัวโพรบครับ",
+        "โพรบจะเคลื่อนมาเหนือจุด แล้วลงไปแตะผิวชิ้นงาน",
+        "เมื่อแตะ เครื่องจะจำพิกัดของจุดนั้นไว้ แล้วไปจุดถัดไป",
+        "กดปุ่มทีละขั้น เพื่อดูช้าๆ ได้เลยครับ"
+      ],
+      points:[200,300,400] } // ตำแหน่ง x ของจุดสัมผัสในภาพเดโม (ไม่ใช่ข้อมูลจริง)
+  ]
+};
+
+// ====== ส่วนแสดงผลสไลด์ ======
+const $=s=>document.querySelector(s);
+const slidesEl=$('#slides');
+let cur=0;
+
+// สร้างสไลด์แกน X-Y-Z (ภาพไอโซเมตริกแยกสี)
+function buildAxes(s){
+  return `<section class="slide"><h2>${s.title}</h2><div class="card">${s.text}</div>
+  <div class="row"><button data-ax="X" style="border-left:8px solid var(--x)">แกน X</button><button data-ax="Y" style="border-left:8px solid var(--y)">แกน Y</button><button data-ax="Z" style="border-left:8px solid var(--z)">แกน Z</button><button data-ax="ALL">ดูทั้งหมด</button></div>
+  <svg viewBox="0 0 600 320" role="img" aria-label="แกน X Y Z">
+   <g stroke-width="6" stroke-linecap="round" font-size="26" font-weight="700">
+    <line id="aX" x1="300" y1="200" x2="500" y2="270" stroke="#ef4444"/><text x="505" y="285" fill="#ef4444">X</text>
+    <line id="aY" x1="300" y1="200" x2="470" y2="110" stroke="#22c55e"/><text x="478" y="108" fill="#22c55e">Y</text>
+    <line id="aZ" x1="300" y1="200" x2="300" y2="30" stroke="#3b82f6"/><text x="310" y="35" fill="#3b82f6">Z</text>
+   </g><circle cx="300" cy="200" r="8" fill="#facc15"/><text x="150" y="215" fill="#facc15" font-size="20">จุดกำเนิด (0,0,0)</text></svg>
+  <div class="card" id="axInfo">กดปุ่มเพื่อดูแต่ละแกน</div></section>`;
+}
+// สร้างสไลด์โพรบแตะจุด (แอนิเมชันทีละ step)
+function buildProbe(s){
+  return `<section class="slide"><h2>${s.title}</h2><div class="card">${s.text}</div>
+  <svg viewBox="0 0 600 320" role="img" aria-label="โพรบแตะชิ้นงาน">
+   <rect x="60" y="285" width="480" height="25" fill="#475569"/><text x="70" y="303" font-size="16" fill="#e2e8f0">โต๊ะเครื่อง</text>
+   <rect x="150" y="190" width="300" height="95" fill="#64748b" stroke="#cbd5e1" stroke-width="2"/><text x="260" y="245" font-size="20" fill="#fff">ชิ้นงาน</text>
+   <g id="dots"></g>
+   <g id="probe" style="transform:translate(300px,60px);transition:transform .8s ease">
+     <rect x="-22" y="-120" width="44" height="30" rx="6" fill="#facc15"/>
+     <line x1="0" y1="-90" x2="0" y2="-16" stroke="#e2e8f0" stroke-width="5"/>
+     <circle cx="0" cy="-8" r="8" fill="#ef4444"/>
+   </g></svg>
+  <div class="row"><button class="p" id="stepBtn">ขั้นถัดไป ▶</button><button id="autoBtn">▶▶ เล่นอัตโนมัติ</button><button id="resetBtn">↺ เริ่มใหม่</button></div>
+  <div class="card" id="stepInfo">พร้อมเริ่ม</div></section>`;
+}
+CONTENT.slides.forEach(s=>{slidesEl.insertAdjacentHTML('beforeend', s.axes?buildAxes(s):buildProbe(s));});
+const secs=[...document.querySelectorAll('.slide')];
+
+// ปุ่มเลือกแกน
+secs[0].querySelectorAll('[data-ax]').forEach(b=>b.onclick=()=>{
+  const k=b.dataset.ax, ax=CONTENT.slides[0].axes;
+  ['X','Y','Z'].forEach(a=>{$('#a'+a).style.opacity=(k==='ALL'||k===a)?1:.15});
+  $('#axInfo').textContent = k==='ALL'?'ทั้งสามแกนตั้งฉากกัน [ตรวจสอบ]':ax[k];
+  secs[0].querySelectorAll('[data-ax]').forEach(x=>x.classList.toggle('on',x===b));
+});
+
+// แอนิเมชันโพรบ: แต่ละจุดมี 2 ขั้น (เคลื่อนมาเหนือจุด, ลงแตะ)
+const pts=CONTENT.slides[1].points; let st=0, timer=null;
+function doStep(){
+  const total=pts.length*2; if(st>=total){$('#stepInfo').textContent='ครบทุกจุดแล้ว เครื่องคำนวณจากพิกัดที่บันทึก [ตรวจสอบ]';return false;}
+  const i=Math.floor(st/2), x=pts[i], p=$('#probe');
+  if(st%2===0){p.style.transform=`translate(${x}px,100px)`;$('#stepInfo').textContent=`ขั้น ${st+1}: โพรบเคลื่อนมาเหนือจุดที่ ${i+1}`;}
+  else{p.style.transform=`translate(${x}px,190px)`;
+    setTimeout(()=>{$('#dots').insertAdjacentHTML('beforeend',`<circle cx="${x}" cy="190" r="7" fill="#22c55e"/><text x="${x-4}" y="178" font-size="16" fill="#22c55e">${i+1}</text>`)},700);
+    $('#stepInfo').textContent=`ขั้น ${st+1}: แตะจุดที่ ${i+1} → บันทึกพิกัด`;}
+  st++; return true;
+}
+$('#stepBtn').onclick=doStep;
+$('#autoBtn').onclick=()=>{clearInterval(timer);timer=setInterval(()=>{if(!doStep())clearInterval(timer)},1100)};
+$('#resetBtn').onclick=()=>{clearInterval(timer);st=0;$('#dots').innerHTML='';$('#probe').style.transform='translate(300px,60px)';$('#stepInfo').textContent='พร้อมเริ่ม'};
+
+// ====== เสียงบรรยาย (Web Speech API th-TH) ======
+const synth=window.speechSynthesis; let voices=[], playing=false, sIdx=0;
+function loadVoices(){
+  if(!synth)return;
+  voices=synth.getVoices(); const th=voices.filter(v=>/^th/i.test(v.lang));
+  $('#warn').style.display=th.length?'none':'block';
+  const list=th.length?th:voices;
+  $('#voice').innerHTML=list.map(v=>`<option value="${v.name}">${v.name} (${v.lang})</option>`).join('');
+}
+if(synth){loadVoices();synth.onvoiceschanged=loadVoices}else $('#warn').style.display='block';
+function showNarr(){
+  $('#narr').innerHTML=CONTENT.slides[cur].narration.map((t,i)=>`<p data-i="${i}">${t}</p>`).join('');
+}
+function hl(i){document.querySelectorAll('#narr p').forEach((p,k)=>p.classList.toggle('hl',k===i))}
+function speakFrom(i){
+  const lines=CONTENT.slides[cur].narration;
+  if(!synth||i>=lines.length){playing=false;hl(-1);return}
+  playing=true; sIdx=i; hl(i);
+  const u=new SpeechSynthesisUtterance(lines[i]);
+  u.lang='th-TH'; u.rate=parseFloat($('#rate').value);
+  const v=voices.find(v=>v.name===$('#voice').value); if(v)u.voice=v;
+  u.onend=()=>{if(playing)speakFrom(i+1)};
+  synth.speak(u);
+}
+function stop(){playing=false;if(synth)synth.cancel();hl(-1)}
+$('#bPlay').onclick=()=>{stop();speakFrom(0)};
+$('#bStop').onclick=stop;
+$('#bRe').onclick=()=>{stop();setTimeout(()=>speakFrom(0),100)};
+
+// ====== ปุ่มก่อนหน้า/ถัดไป + แถบความคืบหน้า ======
+function go(n){
+  stop(); cur=Math.max(0,Math.min(secs.length-1,n));
+  secs.forEach((s,i)=>s.classList.toggle('on',i===cur));
+  $('#prog').style.width=((cur+1)/secs.length*100)+'%';
+  $('#pg').textContent=`${cur+1} / ${secs.length}`;
+  $('#prev').disabled=cur===0; $('#next').disabled=cur===secs.length-1;
+  showNarr();
+}
+$('#prev').onclick=()=>go(cur-1); $('#next').onclick=()=>go(cur+1);
+go(0);
+</script>
+</body>
+</html>
